@@ -1,0 +1,52 @@
+# Configuración del módulo de cámara
+
+camera:
+  # Configuración por defecto
+  default_type: "csi"  # csi o usb
+  default_resolution:
+    width: 1920
+    height: 1080
+  default_fps: 30
+
+# Configuración CSI
+csi:
+  sensor_id: 0
+  flip_method: 0  # 0-7 para diferentes rotaciones
+  formats:
+    - width: 3280
+      height: 2464
+      fps: 21
+    - width: 1920
+      height: 1080
+      fps: 30
+    - width: 1280
+      height: 720
+      fps: 60
+
+# Configuración USB
+usb:
+  device_id: 0
+  backend: "auto"  # auto, v4l2, gstreamer
+  auto_exposure: true
+  exposure_value: 100
+  formats:
+    - width: 1920
+      height: 1080
+      fps: 30
+    - width: 1280
+      height: 720
+      fps: 60
+    - width: 640
+      height: 480
+      fps: 120
+
+# Buffer de captura
+buffer:
+  size: 10
+  drop_frames: false
+
+# Calibración
+calibration:
+  enabled: false
+  matrix_file: "config/camera_matrix.yaml"
+  distortion_file: "config/distortion.yaml"

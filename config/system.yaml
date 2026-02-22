@@ -1,0 +1,37 @@
+# Configuración del sistema PureVision
+# Configuración global del sistema modular
+
+system:
+  name: "PureVision"
+  version: "0.1.0"
+  log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  log_to_file: true
+  log_dir: "logs"
+
+# Rutas del sistema
+paths:
+  modules: "src/modules"
+  config: "config"
+  output: "output"
+  temp: "temp"
+
+# Configuración del gestor de dispositivos
+device_manager:
+  auto_discover: true
+  auto_initialize: false
+  modules_to_load:
+    - camera_module
+    - eulerian_processor_module
+    - display_module
+    - gpio_module
+
+# Event bus
+event_bus:
+  max_queue_size: 1000
+  async_dispatch: true
+
+# Rendimiento
+performance:
+  max_fps: 30
+  processing_threads: 4
+  gpu_acceleration: true

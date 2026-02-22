@@ -1,0 +1,81 @@
+# Configuración de dispositivos disponibles
+# Registro de todos los módulos de dispositivos
+
+devices:
+  # Cámaras
+  camera_csi_0:
+    module: "camera_module"
+    enabled: true
+    config:
+      camera_type: "csi"
+      camera_id: 0
+      width: 1920
+      height: 1080
+      fps: 30
+      flip_method: 0
+
+  camera_usb_0:
+    module: "camera_module"
+    enabled: false
+    config:
+      camera_type: "usb"
+      camera_id: 0
+      width: 1920
+      height: 1080
+      fps: 30
+      backend: "auto"
+
+  # Procesador Euleriano
+  eulerian_processor:
+    module: "eulerian_processor_module"
+    enabled: true
+    config:
+      amplification_factor: 50
+      low_freq: 0.4
+      high_freq: 3.0
+      pyramid_levels: 4
+      magnify_type: "color"
+      fps: 30
+      buffer_size: 150
+
+  # Display
+  display_main:
+    module: "display_module"
+    enabled: true
+    config:
+      window_name: "PureVision - Eulerian Magnification"
+      display_enabled: true
+      save_enabled: false
+      output_path: "output"
+      codec: "mp4v"
+      fps: 30
+      show_fps: true
+      show_info: true
+
+  # GPIO
+  gpio_main:
+    module: "gpio_module"
+    enabled: false
+    config:
+      mode: "BOARD"
+      pins:
+        7:
+          direction: "OUT"
+          initial: false
+        11:
+          direction: "IN"
+          pull_up_down: "up"
+        13:
+          direction: "OUT"
+          initial: false
+
+  # IMU (ejemplo)
+  imu_sensor:
+    module: "imu_module"
+    enabled: false
+    config:
+      sensor_type: "mpu6050"
+      i2c_bus: 1
+      i2c_address: 0x68
+      sample_rate: 100
+      simulation_mode: true
