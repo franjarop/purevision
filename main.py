@@ -13,7 +13,6 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from core.device_manager import DeviceManager
 from core.config_manager import ConfigManager
-from core.event_bus import EventBus
 from utils.logger import setup_logger
 import cv2
 
@@ -85,6 +84,25 @@ def main():
         if not system_config or not devices_config:
             logger.error("No se pudo cargar la configuración")
             return 1
+
+        # Si no hay ninguna cámara marcada como enabled en la configuración,
+        # habilitar en memoria la primera cámara USB encontrada (comportamiento deseado)
+        try:
+            has_enabled_camera = any(
+                d.get("enabled", False) and d.get("module") == "camera_module"
+                for d in devices_config.get("devices", {}).values()
+            )
+            if not has_enabled_camera:
+                for name, d in devices_config.get("devices", {}).items():
+                    if d.get("module") == "camera_module":
+                        cfg = d.get("config", {})
+                        if cfg.get("camera_type") == "usb":
+                            logger.info(f"No hay cámaras habilitadas: habilitando en memoria {name}")
+                            d["enabled"] = True
+                            break
+        except Exception:
+            # No bloquear si falla la detección en memoria
+            pass
         
         # Crear gestor de dispositivos
         logger.info("Inicializando gestor de dispositivos...")
@@ -119,25 +137,54 @@ def main():
         
         # Inicializar dispositivos
         logger.info("Inicializando dispositivos...")
+        initialized_ids = {}
         for device_name, device_id in device_ids.items():
             if device_manager.initialize_device(device_id):
                 logger.info(f"✓ {device_name} inicializado")
+                initialized_ids[device_name] = device_id
             else:
-                logger.error(f"✗ Fallo al inicializar {device_name}")
+                logger.error(f"✗ Fallo al inicializar {device_name} — será omitido")
         
-        # Iniciar dispositivos
+        # Iniciar solo dispositivos inicializados correctamente
         logger.info("Iniciando dispositivos...")
-        for device_name, device_id in device_ids.items():
+        for device_name, device_id in initialized_ids.items():
             device_manager.start_device(device_id)
         
         # Loop principal
         logger.info("Iniciando loop principal...")
         logger.info("Presiona 'q' para salir")
         
-        # Obtener referencias a dispositivos
-        camera = device_manager.get_device(device_ids.get("camera_csi_0") or device_ids.get("camera_usb_0"))
-        processor = device_manager.get_device(device_ids.get("eulerian_processor"))
-        display = device_manager.get_device(device_ids.get("display_main"))
+        # Obtener referencias a dispositivos (solo de los inicializados)
+        camera = device_manager.get_device(initialized_ids.get("camera_csi_0") or initialized_ids.get("camera_usb_0"))
+        # Fallback: si no hay cámara (p. ej. CSI no disponible), intentar habilitar la primera cámara USB
+        if not camera:
+            logger.warning("No se encontró cámara inicial; intentando fallback a cámara USB definida en la configuración")
+            # Buscar en la configuración de dispositivos una entrada de tipo camera_module y camera_type usb
+            usb_candidate_name = None
+            for name, dev in devices_config.get("devices", {}).items():
+                if dev.get("module") == "camera_module":
+                    cfg = dev.get("config", {})
+                    if cfg.get("camera_type") == "usb":
+                        usb_candidate_name = name
+                        usb_candidate_cfg = cfg
+                        break
+
+            if usb_candidate_name:
+                # Crear el dispositivo aunque en el YAML esté marcado como disabled
+                logger.info(f"Intentando crear dispositivo USB fallback: {usb_candidate_name}")
+                created_id = device_manager.create_device("camera_module", usb_candidate_name, usb_candidate_cfg)
+                if created_id:
+                    if device_manager.initialize_device(created_id):
+                        device_manager.start_device(created_id)
+                        camera = device_manager.get_device(created_id)
+                        if camera:
+                            logger.info(f"Cámara USB fallback inicializada: {usb_candidate_name}")
+                    else:
+                        logger.error("Fallo al inicializar la cámara USB de fallback")
+                else:
+                    logger.error("No se pudo crear la cámara USB de fallback")
+        processor = device_manager.get_device(initialized_ids.get("eulerian_processor"))
+        display = device_manager.get_device(initialized_ids.get("display_main"))
         
         if not camera:
             logger.error("No hay cámara disponible")
@@ -145,12 +192,20 @@ def main():
         
         frame_count = 0
         
+        # Si no hay display module, crear ventana directa
+        if not display:
+            logger.info("No hay módulo display activo — mostrando video directamente")
+            cv2.namedWindow("PureVision", cv2.WINDOW_NORMAL)
+        
         while True:
             # Capturar frame
             frame = camera.process()
             
             if frame is None:
-                logger.warning("No se pudo capturar frame")
+                # Esperar un poco antes de reintentar, evitar CPU al 100%
+                key = cv2.waitKey(30) & 0xFF
+                if key == ord('q') or key == 27:
+                    break
                 continue
             
             frame_count += 1
@@ -158,6 +213,8 @@ def main():
             # Procesar con magnificación euleriana
             if processor:
                 processed_frame = processor.process(frame)
+                if processed_frame is None:
+                    processed_frame = frame
             else:
                 processed_frame = frame
             
@@ -168,11 +225,13 @@ def main():
                 if result and result.get("action") == "quit":
                     logger.info("Salida solicitada por usuario")
                     break
-            
-            # Verificar tecla ESC como alternativa
-            key = cv2.waitKey(1) & 0xFF
-            if key == 27:  # ESC
-                break
+            else:
+                # Mostrar directamente como prueba.py
+                cv2.imshow("PureVision", processed_frame)
+                key = cv2.waitKey(1) & 0xFF
+                if key == ord('q') or key == 27:
+                    logger.info("Salida solicitada por usuario")
+                    break
         
         logger.info(f"Frames procesados: {frame_count}")
         

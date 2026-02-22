@@ -1,8 +1,6 @@
-# Configuración de dispositivos disponibles
-# Registro de todos los módulos de dispositivos
+# Configuración de prueba: desactivar eulerian processor y display, habilitar cámara USB
 
 devices:
-  # Cámaras
   camera_csi_0:
     module: "camera_module"
     enabled: false
@@ -25,54 +23,38 @@ devices:
       fps: 30
       backend: "v4l2"
 
-  # Procesador Euleriano
   eulerian_processor:
     module: "eulerian_processor_module"
-    enabled: true
+    enabled: false
     config:
-      amplification_factor: 30
-      low_freq: 0.8
-      high_freq: 2.0
+      amplification_factor: 50
+      low_freq: 0.4
+      high_freq: 3.0
       pyramid_levels: 4
       magnify_type: "color"
       fps: 30
-      chrom_atten: 0.7
-      roi_frac_w: 0.22
-      roi_frac_h: 0.55
+      buffer_size: 150
 
-  # Display
   display_main:
     module: "display_module"
-    enabled: true
+    enabled: false
     config:
       window_name: "PureVision - Eulerian Magnification"
-      display_enabled: true
+      display_enabled: false
       save_enabled: false
       output_path: "output"
       codec: "mp4v"
       fps: 30
-      show_fps: false
-      show_info: false
-      fullscreen: true
+      show_fps: true
+      show_info: true
 
-  # GPIO
   gpio_main:
     module: "gpio_module"
     enabled: false
     config:
       mode: "BOARD"
-      pins:
-        7:
-          direction: "OUT"
-          initial: false
-        11:
-          direction: "IN"
-          pull_up_down: "up"
-        13:
-          direction: "OUT"
-          initial: false
+      pins: {}
 
-  # IMU (ejemplo)
   imu_sensor:
     module: "imu_module"
     enabled: false

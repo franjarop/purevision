@@ -6,12 +6,11 @@ Soporta múltiples tipos de cámaras y proporciona captura de frames.
 import cv2
 import numpy as np
 from typing import Any, Dict, Optional, Tuple
-import logging
 
 import sys
 sys.path.append('src')
 
-from core.base_device import BaseDevice, DeviceStatus
+from core.base_device import BaseDevice
 
 
 class CameraModule(BaseDevice):
@@ -40,7 +39,7 @@ class CameraModule(BaseDevice):
                 - flip_method: Método de rotación (0-7)
         """
         super().__init__(device_id, config)
-        
+
         self.camera = None
         self.camera_type = config.get("camera_type", "usb")
         self.camera_id = config.get("camera_id", 0)
@@ -48,7 +47,11 @@ class CameraModule(BaseDevice):
         self.height = config.get("height", 1080)
         self.fps = config.get("fps", 30)
         self.flip_method = config.get("flip_method", 0)
-        
+        # Opciones adicionales para apertura (respetar config de prueba)
+        self.backend = config.get("backend", "auto")
+        # fourcc puede ser 'MJPG', 'YUYV', u otro; si es None usaremos heurística
+        self.fourcc = config.get("fourcc", None)
+
         self.frame_count = 0
         self.last_frame = None
     
@@ -67,15 +70,66 @@ class CameraModule(BaseDevice):
                 gst_pipeline = self._get_csi_pipeline()
                 self.camera = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
             else:
-                # Cámara USB estándar
-                self.camera = cv2.VideoCapture(self.camera_id)
-                
-                # Configurar resolución y FPS
-                self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
-                self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
-                self.camera.set(cv2.CAP_PROP_FPS, self.fps)
+                # Cámara USB estándar: respetar backend/fourcc si vienen en config.
+                try:
+                    # Si piden GStreamer explícitamente, usar pipeline v4l2src
+                    if self.backend == "gstreamer":
+                        pipeline = (
+                            f"v4l2src device=/dev/video{self.camera_id} ! "
+                            f"video/x-raw, width={self.width}, height={self.height}, framerate={self.fps}/1 ! "
+                            f"videoconvert ! video/x-raw, format=BGR ! appsink"
+                        )
+                        self.camera = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
+                    else:
+                        # Usar V4L2 cuando sea posible (como en prueba.py)
+                        self.camera = cv2.VideoCapture(self.camera_id, cv2.CAP_V4L2)
+
+                        # Intentar FOURCC pedido o MJPG por defecto
+                        fourcc_candidates = []
+                        if self.fourcc:
+                            fourcc_candidates.append(self.fourcc)
+                        fourcc_candidates.append('MJPG')
+
+                        opened = False
+                        for fc in fourcc_candidates:
+                            try:
+                                self.camera.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*fc))
+                                self.camera.set(cv2.CAP_PROP_FRAME_WIDTH,  int(self.width))
+                                self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, int(self.height))
+                                self.camera.set(cv2.CAP_PROP_FPS,          float(self.fps))
+                                if self.camera.isOpened():
+                                    opened = True
+                                    break
+                            except Exception:
+                                continue
+
+                        # Si no abrió con los intentos anteriores, intentar fallback a 640x480 YUYV
+                        if not self.camera.isOpened() or not opened:
+                            try:
+                                try:
+                                    self.camera.release()
+                                except Exception:
+                                    pass
+                                self.camera = cv2.VideoCapture(self.camera_id, cv2.CAP_V4L2)
+                                # Forzar YUYV a 640x480@30
+                                self.camera.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'YUYV'))
+                                self.camera.set(cv2.CAP_PROP_FRAME_WIDTH,  640)
+                                self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+                                self.camera.set(cv2.CAP_PROP_FPS,          30)
+                            except Exception:
+                                # último recurso: abrir con backend por defecto
+                                try:
+                                    self.camera = cv2.VideoCapture(self.camera_id)
+                                except Exception:
+                                    self.camera = None
+                except Exception as e:
+                    self.logger.debug(f"Excepción al abrir cámara USB: {e}")
+                    try:
+                        self.camera = cv2.VideoCapture(self.camera_id)
+                    except Exception:
+                        self.camera = None
             
-            if not self.camera.isOpened():
+            if not self.camera or not self.camera.isOpened():
                 self.logger.error("No se pudo abrir la cámara")
                 return False
             

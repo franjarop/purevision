@@ -53,6 +53,9 @@ class DisplayModule(BaseDevice):
         self.fps = config.get("fps", 30)
         self.show_fps = config.get("show_fps", True)
         self.show_info = config.get("show_info", True)
+        self.window_width = config.get("window_width", 1280)
+        self.window_height = config.get("window_height", 720)
+        self.fullscreen = config.get("fullscreen", False)
         
         self.video_writer = None
         self.frame_count = 0
@@ -80,8 +83,22 @@ class DisplayModule(BaseDevice):
             
             # Crear ventana si está habilitada
             if self.display_enabled:
-                cv2.namedWindow(self.window_name, cv2.WINDOW_NORMAL)
-                self.logger.info(f"Ventana creada: {self.window_name}")
+                if self.fullscreen:
+                    cv2.namedWindow(self.window_name, cv2.WINDOW_NORMAL)
+                    cv2.setWindowProperty(
+                        self.window_name,
+                        cv2.WND_PROP_FULLSCREEN,
+                        cv2.WINDOW_FULLSCREEN,
+                    )
+                else:
+                    cv2.namedWindow(self.window_name, cv2.WINDOW_NORMAL)
+                    cv2.resizeWindow(
+                        self.window_name,
+                        self.window_width,
+                        self.window_height,
+                    )
+                self.logger.info(f"Ventana creada: {self.window_name} "
+                                 f"({self.window_width}x{self.window_height})")
             
             return True
             
