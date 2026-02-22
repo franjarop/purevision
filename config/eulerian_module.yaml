@@ -1,0 +1,73 @@
+# Configuración del módulo de magnificación euleriana
+
+eulerian:
+  # Presets predefinidos
+  presets:
+    pulse:
+      name: "Pulse Detection"
+      description: "Detecta pulso cardíaco y flujo sanguíneo"
+      amplification_factor: 50
+      low_freq: 0.4
+      high_freq: 3.0
+      pyramid_levels: 4
+      magnify_type: "color"
+    
+    motion:
+      name: "Motion Amplification"
+      description: "Amplifica movimientos sutiles"
+      amplification_factor: 20
+      low_freq: 0.05
+      high_freq: 0.4
+      pyramid_levels: 5
+      magnify_type: "motion"
+    
+    breathing:
+      name: "Breathing Detection"
+      description: "Detecta respiración"
+      amplification_factor: 100
+      low_freq: 0.2
+      high_freq: 0.5
+      pyramid_levels: 4
+      magnify_type: "color"
+    
+    vibration:
+      name: "Vibration Analysis"
+      description: "Analiza vibraciones estructurales"
+      amplification_factor: 30
+      low_freq: 10.0
+      high_freq: 50.0
+      pyramid_levels: 6
+      magnify_type: "motion"
+
+  # Configuración activa
+  active_preset: "pulse"
+
+  # Configuración avanzada
+  advanced:
+    buffer_size: 150
+    fps: 30
+    temporal_filter: "butterworth"
+    filter_order: 4
+    chromatic_attenuation: 0.1
+    
+  # Optimización
+  optimization:
+    use_gpu: true
+    downscale_input: false
+    downscale_factor: 1.0
+    parallel_processing: true
+
+  # ROI (Región de Interés)
+  roi:
+    enabled: false
+    x: 0
+    y: 0
+    width: 0
+    height: 0
+
+  # Visualización
+  visualization:
+    show_original: true
+    show_magnified: true
+    side_by_side: true
+    show_pyramid_levels: false

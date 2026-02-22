@@ -1,0 +1,48 @@
+# Template de configuración para módulos de dispositivos
+
+# Nombre del dispositivo
+device_name: "Mi Dispositivo"
+
+# Configuración general
+general:
+  enabled: true
+  auto_initialize: true
+  retry_on_error: true
+  max_retries: 3
+
+# Parámetros específicos del dispositivo
+device:
+  # TODO: Añadir parámetros específicos
+  parametro1: "valor1"
+  parametro2: 100
+  parametro3: true
+
+# Configuración de conexión (si aplica)
+connection:
+  type: "usb"  # usb, serial, i2c, spi, etc.
+  port: "/dev/ttyUSB0"
+  baudrate: 115200
+  timeout: 1.0
+
+# Configuración de operación
+operation:
+  sample_rate: 100  # Hz
+  buffer_size: 1000
+  processing_mode: "realtime"
+
+# Calibración (si aplica)
+calibration:
+  enabled: false
+  calibration_file: "config/calibration_data.yaml"
+
+# Callbacks y eventos
+events:
+  on_data_ready: true
+  on_error: true
+  on_disconnect: true
+
+# Logging específico
+logging:
+  level: "INFO"
+  log_data: false
+  data_log_interval: 10  # segundos
